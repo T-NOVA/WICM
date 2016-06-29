@@ -434,8 +434,8 @@ class VtnWrapper:
             raise ex
 
     def _vbridge_chain_delete(self, tenant, vbridge):
-        url = ('http://{}:{}/restconf/operations/vtn-vbridge:'
-               'remove-vbridge').format(self.host, self.port)
+        url = ('http://{}:{}/restconf/operations/vtn-flow-filter:'
+               'remove-flow-filter').format(self.host, self.port)
         data = json.dumps({'input':
                            {'tenant-name': tenant,
                             'bridge-name': vbridge}})
