@@ -23,7 +23,7 @@ import database.nfvi as nfvi
 import database.service as service
 from sqlalchemy.exc import IntegrityError
 
-mysql_connect = 'mysql+mysqlconnector://wicm:wicm@biker:3306/wicm'
+mysql_connect = 'mysql+mysqlconnector://wicm:wicm@database:3306/wicm'
 
 logger = logging.getLogger()
 logging.basicConfig(level=logging.DEBUG, format=('%(asctime)s - '
