@@ -3,7 +3,7 @@ version: '2'
 services:
     database:
         image: mariadb:latest
-        envoirement:
+        environment:
             - MYSQL_ROOT_PASSWORD=root
             - MYSQL_DATABASE=wicm
             - MYSQL_USER=wicm 
