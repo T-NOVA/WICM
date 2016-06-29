@@ -61,5 +61,18 @@ target/
 #Ipython Notebook
 .ipynb_checkpoints
 
+<<<<<<< HEAD
 #custom
 tests/
+=======
+#Custom
+schemas.json
+db_manager.py
+upload.sh
+upload_gr.sh
+mysql/Vagrantfile
+mysql/bootstrap.sh
+mysql/.vagrant/
+examples/
+test_env/
+>>>>>>> 229df9d5c1a5f68cdff4cd2ef2bd547cb9918610
