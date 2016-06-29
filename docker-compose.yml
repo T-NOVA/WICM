@@ -28,7 +28,7 @@ services:
             dockerfile: ./wicm.dockerfile
         restart: always
         ports :
-            - 5000:12891
+            - 12891:5000
         links:
             - opendaylight
             - database
