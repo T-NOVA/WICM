@@ -234,7 +234,8 @@ def service_request_delete(ns_instance_id=None):
                         .format(ns_instance_id)}), 400
 
     service.set_status(ns_instance_id, 'TERMINATING')
-    vtn.chain_delete(service_info['client_mkt_id'], ns_instance_id)
+    vtn.chain_delete(service_info['client_mkt_id'], ns_instance_id,
+                     service_info['nap_mkt_id'])
     service.delete_service(ns_instance_id)
     logger.info('Service: {} deleted!'.format(ns_instance_id))
     return jsonify({'deleted': {'ns_instance_id': ns_instance_id}}), 200
