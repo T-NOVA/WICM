@@ -83,6 +83,10 @@ class RedirectionNotCreated(VtnException):
     pass
 
 
+class ChainNotDeleted(VtnException):
+    pass
+
+
 def _headers():
     return {'content-type': 'application/json'}
 
@@ -429,8 +433,37 @@ class VtnWrapper:
             self._vbrige_delete(client_id, ns_instance_id + '_NS')
             raise ex
 
-    def chain_delete(self, client_id, ns_instance_id):
+    def _vbridge_chain_delete(self, tenant, vbridge):
+        url = ('http://{}:{}/restconf/operations/vtn-vbridge:'
+               'remove-vbridge').format(self.host, self.port)
+        data = json.dumps({'input':
+                           {'tenant-name': tenant,
+                            'bridge-name': vbridge}})
+
+        logger.info('Deleting chain at vbridge "{}" for tenant "{}"'
+                    .format(vbridge, tenant))
+
+        logger.debug('Deleting chain at vbridge url:"{}" data:"{}"'
+                     .format(url, data))
+
+        r = post(url, data=data, auth=self.auth, headers=_headers())
+
+        if r.ok:
+            logger.debug('Success deleting chain at vbridge "{}" for "{}"'
+                         .format(vbridge, tenant))
+        elif r.status_code == 404:  # NOT FOUND
+            logger.error(('Failed to delete chain at vbridge "{}" for tenant "'
+                          '{}": tenant does not exist.')
+                         .format(vbridge, tenant))
+            raise TenantNotFound(tenant)
+        else:
+            logger.error(('Failed to delete chain at vbridge "{}" for tenant'
+                         ' "{}": {}').format(vbridge, tenant, r.text))
+            raise ChainNotDeleted(vbridge)
+
+    def chain_delete(self, client_id, ns_instance_id, nap_mkt_id):
         self._vbrige_delete(client_id, ns_instance_id + '_NS')
+        self._vbridge_chain_delete(client_id, nap_mkt_id + '_NAP')
 
     def nfvi_create(self, mkt_id, ce_atachment, pe_atachment):
         self._vtenant_create('TeNOR')
