@@ -9,4 +9,6 @@ RUN pip3 install --upgrade wheel && \
     pip3 install --upgrade -r /tmp/requirements.txt && \
     rm -rf /tmp/*
 
-CMD ['python3', '/wicm/wicm.py']
+EXPOSE 5000
+
+CMD ["python3","/wicm/wicm.py"]
