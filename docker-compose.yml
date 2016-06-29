@@ -1,0 +1,33 @@
+
+version: '2'
+services:
+    database:
+        image: mariadb:latest
+        envoirement:
+            - MYSQL_ROOT_PASSWORD=root
+            - MYSQL_DATABASE=wicm
+            - MYSQL_USER=wicm 
+            - MYSQL_PASSWORD=wicm
+        restart: always
+        expose: 
+            - 3306
+    opendaylight:
+        build:
+            dockerfile: ./odl.dockerfile
+        restart: always
+        ports:
+            - 8080:8080
+            - 6633:6633
+            - 6653:6653
+            - 6640:6640
+            - 8181:8181
+    wicm:
+        build:
+            dockerfile: ./wicm.dockerfile
+        restart: always
+        ports :
+            - 5000:12891
+        links:
+            - opendaylight
+            - database
+
