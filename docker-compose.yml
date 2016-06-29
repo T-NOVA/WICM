@@ -32,4 +32,5 @@ services:
         links:
             - opendaylight
             - database
+        CMD: /opt/opendaylight/bin/karaf clean
 
