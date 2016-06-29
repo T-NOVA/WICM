@@ -1,5 +1,6 @@
 '''
 <<<<<<< HEAD
+<<<<<<< HEAD
     Copyright 2014-2016 PTIN
 
     Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,6 +18,8 @@
 from flask_sqlalchemy import SQLAlchemy
 db = SQLAlchemy()
 =======
+=======
+>>>>>>> 229df9d5c1a5f68cdff4cd2ef2bd547cb9918610
 	Copyright 2014-2016 PTIN
 
 	Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,5 +35,9 @@ db = SQLAlchemy()
 	limitations under the License. 
 '''
 from flask.ext.sqlalchemy import SQLAlchemy
+<<<<<<< HEAD
+db = SQLAlchemy()
+>>>>>>> 229df9d5c1a5f68cdff4cd2ef2bd547cb9918610
+=======
 db = SQLAlchemy()
 >>>>>>> 229df9d5c1a5f68cdff4cd2ef2bd547cb9918610

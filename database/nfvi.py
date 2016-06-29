@@ -1,5 +1,6 @@
 '''
 <<<<<<< HEAD
+<<<<<<< HEAD
     Copyright 2014-2016 PTIN
 
     Licensed under the Apache License, Version 2.0 (the "License");
@@ -115,6 +116,8 @@ def delete(mkt_id=None):
 
     return len(query)
 =======
+=======
+>>>>>>> 229df9d5c1a5f68cdff4cd2ef2bd547cb9918610
 	Copyright 2014-2016 PTIN
 
 	Licensed under the Apache License, Version 2.0 (the "License");
@@ -193,5 +196,9 @@ def delete(mkt_id=None):
 	if query:
 		db.session.commit()
 	
+<<<<<<< HEAD
+	return len(query)
+>>>>>>> 229df9d5c1a5f68cdff4cd2ef2bd547cb9918610
+=======
 	return len(query)
 >>>>>>> 229df9d5c1a5f68cdff4cd2ef2bd547cb9918610

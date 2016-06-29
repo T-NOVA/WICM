@@ -1,5 +1,6 @@
 '''
 <<<<<<< HEAD
+<<<<<<< HEAD
     Copyright 2014-2016 PTIN
 
     Licensed under the Apache License, Version 2.0 (the "License");
@@ -213,6 +214,8 @@ def delete_service(ns_instance_id):
         db.session.delete(service)
         db.session.commit()
 =======
+=======
+>>>>>>> 229df9d5c1a5f68cdff4cd2ef2bd547cb9918610
 	Copyright 2014-2016 PTIN
 
 	Licensed under the Apache License, Version 2.0 (the "License");
@@ -409,4 +412,7 @@ def delete_flows(ns_instance_id):
 		db.session.delete(Flow.query.filter_by(id=flow.flow_id).first())
 	if flows:
 		db.session.commit()
+<<<<<<< HEAD
+>>>>>>> 229df9d5c1a5f68cdff4cd2ef2bd547cb9918610
+=======
 >>>>>>> 229df9d5c1a5f68cdff4cd2ef2bd547cb9918610
