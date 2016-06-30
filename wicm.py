@@ -24,7 +24,7 @@ import database.service as service
 from sqlalchemy.exc import IntegrityError
 
 mysql_connect = 'mysql+mysqlconnector://wicm:wicm@database:3306/wicm'
-#mysql_connect = 'mysql+mysqlconnector://wicm:wicm@biker:3300/wicm'
+# mysql_connect = 'mysql+mysqlconnector://wicm:wicm@biker:3300/wicm'
 
 logger = logging.getLogger()
 logging.basicConfig(level=logging.DEBUG, format=('%(asctime)s - '
@@ -35,7 +35,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = mysql_connect
 db.init_app(app)
 
 vtn = VtnWrapper('opendaylight', 8181)
-#vtn = VtnWrapper('biker', 8181)
+# vtn = VtnWrapper('biker', 8181)
 
 
 @app.route('/nap', methods=['POST', 'GET', 'DELETE'], strict_slashes=False)
@@ -236,8 +236,11 @@ def service_request_delete(ns_instance_id=None):
                         .format(ns_instance_id)}), 400
 
     service.set_status(ns_instance_id, 'TERMINATING')
-    vtn.chain_delete(service_info['client_mkt_id'], ns_instance_id,
-                     service_info['nap_mkt_id'])
+
+    if service_info['status'] == 'ACTIVE':
+        vtn.chain_delete(service_info['client_mkt_id'], ns_instance_id,
+                         service_info['nap_mkt_id'])
+
     service.delete_service(ns_instance_id)
     logger.info('Service: {} deleted!'.format(ns_instance_id))
     return jsonify({'deleted': {'ns_instance_id': ns_instance_id}}), 200
