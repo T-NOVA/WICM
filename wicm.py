@@ -23,8 +23,8 @@ import database.nfvi as nfvi
 import database.service as service
 from sqlalchemy.exc import IntegrityError
 
-#mysql_connect = 'mysql+mysqlconnector://wicm:wicm@database:3306/wicm'
-mysql_connect = 'mysql+mysqlconnector://wicm:wicm@biker:3300/wicm'
+mysql_connect = 'mysql+mysqlconnector://wicm:wicm@database:3306/wicm'
+#mysql_connect = 'mysql+mysqlconnector://wicm:wicm@biker:3300/wicm'
 
 logger = logging.getLogger()
 logging.basicConfig(level=logging.DEBUG, format=('%(asctime)s - '
@@ -34,8 +34,8 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = mysql_connect
 db.init_app(app)
 
-#vtn = VtnWrapper('opendaylight', 8181)
-vtn = VtnWrapper('biker', 8181)
+vtn = VtnWrapper('opendaylight', 8181)
+#vtn = VtnWrapper('biker', 8181)
 
 
 @app.route('/nap', methods=['POST', 'GET', 'DELETE'], strict_slashes=False)
