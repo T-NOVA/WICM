@@ -83,7 +83,7 @@ class RedirectionNotCreated(VtnException):
     pass
 
 
-class ChainNotDeleted(VtnException):
+class RedirectionNotDeleted(VtnException):
     pass
 
 
@@ -104,6 +104,7 @@ class VtnWrapper:
                       'Adress "{}:{}".'
                       'Auth "{}:{}"').format(self.host, self.port, self.auth[0],
                                              self.auth[1]))
+        self.condition_create()
 
     def _vtenant_exists(self, tenant):
         url_check = '{}:{}/restconf/operational/vtn:vtns/vtn/'
@@ -348,8 +349,8 @@ class VtnWrapper:
                          format(vterminal, tenant, r.text))
             raise TerminalNotCreated(vterminal)
 
-    def _redirect(self, tenant, from_vbridge, from_vinterface, to_vbridge,
-                  to_vinterface):
+    def _redirect_create(self, tenant, from_vbridge, from_vinterface,
+                         to_vbridge, to_vinterface):
         url = ('http://{}:{}/restconf/operations/vtn-flow-filter:'
                'set-flow-filter').format(self.host, self.port)
 
@@ -427,43 +428,48 @@ class VtnWrapper:
                 redirections = zip(path[::2], path[1::2])
 
                 for if0, if1 in redirections:
-                    self._redirect(client_id, if0[0], if0[1], if1[0], if1[1])
-                    self._redirect(client_id, if1[0], if1[1], if0[0], if0[1])
+                    self._redirect_create(client_id, if0[0], if0[1], if1[0],
+                                          if1[1])
+                    self._redirect_create(client_id, if1[0], if1[1], if0[0],
+                                          if0[1])
         except Exception as ex:
             self._vbrige_delete(client_id, ns_instance_id + '_NS')
             raise ex
 
-    def _vbridge_chain_delete(self, tenant, vbridge):
+    def _redirect_delete(self, tenant, vbridge, vinterface):
         url = ('http://{}:{}/restconf/operations/vtn-flow-filter:'
                'remove-flow-filter').format(self.host, self.port)
         data = json.dumps({'input':
                            {'tenant-name': tenant,
-                            'bridge-name': vbridge}})
+                            'bridge-name': vbridge,
+                            'interface-name': vinterface}})
 
-        logger.info('Deleting chain at vbridge "{}" for tenant "{}"'
-                    .format(vbridge, tenant))
+        logger.info('Deleting redirection "{}" at vbridge "{}" for tenant "{}"'
+                    .format(vinterface, vbridge, tenant))
 
-        logger.debug('Deleting chain at vbridge url:"{}" data:"{}"'
+        logger.debug('Deleting redirection at vbridge url:"{}" data:"{}"'
                      .format(url, data))
 
         r = post(url, data=data, auth=self.auth, headers=_headers())
 
         if r.ok:
-            logger.debug('Success deleting chain at vbridge "{}" for "{}"'
-                         .format(vbridge, tenant))
+            logger.debug(('Success deleting redirection "{}" at vbridge "{}" '
+                          'for "{}"').format(vinterface, vbridge, tenant))
         elif r.status_code == 404:  # NOT FOUND
-            logger.error(('Failed to delete chain at vbridge "{}" for tenant "'
-                          '{}": tenant does not exist.')
-                         .format(vbridge, tenant))
+            logger.error(('Failed to delete redirection "{}" at vbridge "{}" '
+                          'for tenant "{}": tenant does not exist.')
+                         .format(vinterface, vbridge, tenant))
             raise TenantNotFound(tenant)
         else:
-            logger.error(('Failed to delete chain at vbridge "{}" for tenant'
-                         ' "{}": {}').format(vbridge, tenant, r.text))
-            raise ChainNotDeleted(vbridge)
+            logger.error(('Failed to delete redirection "{}" at vbridge "{}" '
+                          'for tenant "{}": {}')
+                         .format(vinterface, vbridge, tenant, r.text))
+            raise RedirectionNotDeleted(vbridge)
 
     def chain_delete(self, client_id, ns_instance_id, nap_mkt_id):
         self._vbrige_delete(client_id, ns_instance_id + '_NS')
-        self._vbridge_chain_delete(client_id, nap_mkt_id + '_NAP')
+        self._redirect_delete(client_id, nap_mkt_id + '_NAP', 'ce')
+        self._redirect_delete(client_id, nap_mkt_id + '_NAP', 'pe')
 
     def nfvi_create(self, mkt_id, ce_atachment, pe_atachment):
         self._vtenant_create('TeNOR')
