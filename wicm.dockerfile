@@ -11,4 +11,5 @@ RUN pip3 install --upgrade wheel && \
 
 EXPOSE 5000
 
-CMD ["python3","/wicm/wicm.py"]
+#CMD ["python3","/wicm/wicm.py"]
+CMD ["gunicorn", "-w", "8", "/wicm/wicm"]
