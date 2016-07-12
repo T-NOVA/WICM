@@ -19,8 +19,8 @@ from .nap import NAP
 from .interface import Interface
 from .port import Port
 from sqlalchemy.exc import IntegrityError
-
-available_vlans = set(range(400, 600))
+=`=jedi=0, =`=     (start, *_*stop=None*_*, step=1) =`=jedi=`=
+available_vlans = set(range(400, 501))
 
 
 class ServiceInterface(db.Model):
