@@ -11,4 +11,5 @@ RUN pip3 install --upgrade wheel && \
 
 EXPOSE 5000
 
-CMD ["gunicorn", "-b", "0.0.0.0:5000","-w", "8", "/wicm/wicm"]
+WORKDIR /wicm
+CMD ["gunicorn", "-b", "0.0.0.0:5000","-w", "8", "wicm:app"]
