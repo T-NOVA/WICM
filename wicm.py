@@ -32,6 +32,8 @@ logging.basicConfig(level=logging.DEBUG, format=('%(asctime)s - '
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = mysql_connect
+app.config['SQLALCHEMY_POOL_RECYCLE'] = 299
+
 db.init_app(app)
 
 vtn = VtnWrapper('opendaylight', 8181)
