@@ -422,16 +422,14 @@ class VtnWrapper:
                 path.append((ns_instance_id + '_NS', 'ce' + str(i)))
                 path.append((ns_instance_id + '_NS', 'pe' + str(i)))
 
-                path = [(nap_mkt_id + '_NAP', 'ce')] + path \
-                    + [(nap_mkt_id + '_NAP', 'pe')]
+            path = [(nap_mkt_id + '_NAP', 'ce')] + path \
+                + [(nap_mkt_id + '_NAP', 'pe')]
+            redirections = zip(path[::2], path[1::2])
 
-                redirections = zip(path[::2], path[1::2])
+            for if0, if1 in redirections:
+                self._redirect_create(client_id, if0[0], if0[1], if1[0], if1[1])
+                self._redirect_create(client_id, if1[0], if1[1], if0[0], if0[1])
 
-                for if0, if1 in redirections:
-                    self._redirect_create(client_id, if0[0], if0[1], if1[0],
-                                          if1[1])
-                    self._redirect_create(client_id, if1[0], if1[1], if0[0],
-                                          if0[1])
         except Exception as ex:
             self._vbrige_delete(client_id, ns_instance_id + '_NS')
             raise ex

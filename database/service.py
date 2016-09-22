@@ -133,16 +133,29 @@ def get(ns_instance_id):
         status = service.status
         nap_mkt_id = NAP.query.filter_by(id=service.nap_refid).first().mkt_id
 
-        service_interface = ServiceInterface.query.filter_by(
-            service_refid=service.id).first()
+        service_interfaces = ServiceInterface.query.filter_by(
+            service_refid=service.id).order_by(ServiceInterface.index)
 
-        if service_interface:
+        path = []
+        for service_interface in service_interfaces:
+
             ce_interface = Interface.query.filter_by(
                 id=service_interface.ce_interface_refid).first()
             pe_interface = Interface.query.filter_by(
                 id=service_interface.pe_interface_refid).first()
             nfvi_mkt_id = NFVI.query.filter_by(
                 id=service_interface.nfvi_refid).first().mkt_id
+
+            path.append({
+                'nfvi_mkt_id': nfvi_mkt_id,
+                'ce_transport': {
+                    'type': 'vlan',
+                    'vlan_id':  ce_interface.vlan,
+                },
+                'pe_transport': {
+                    'type': 'vlan',
+                    'vlan_id':  pe_interface.vlan,
+                }})
 
         created = service.created
         updated = service.updated
@@ -151,15 +164,7 @@ def get(ns_instance_id):
             'client_mkt_id': client_mkt_id,
             'status': status,
             'nap_mkt_id': nap_mkt_id,
-            'nfvi_mkt_id': nfvi_mkt_id if service_interface else None,
-            'ce_transport': {
-                'type': 'vlan',
-                'vlan_id': ce_interface.vlan if service_interface else None
-            },
-            'pe_transport': {
-                'type': 'vlan',
-                'vlan_id': pe_interface.vlan if service_interface else None
-            },
+            'path': path,
             'created': created,
             'updated': updated
             })

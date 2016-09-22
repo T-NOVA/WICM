@@ -15,6 +15,7 @@
 '''
 
 import logging
+import configparser
 from flask import Flask, request, jsonify
 from vtn import VtnWrapper
 from database.database import db
@@ -23,21 +24,47 @@ import database.nfvi as nfvi
 import database.service as service
 from sqlalchemy.exc import IntegrityError
 
-mysql_connect = 'mysql+mysqlconnector://wicm:wicm@database:3306/wicm'
-# mysql_connect = 'mysql+mysqlconnector://wicm:wicm@biker:3300/wicm'
-
 logger = logging.getLogger()
 logging.basicConfig(level=logging.DEBUG, format=('%(asctime)s - '
                                                  '%(levelname)s - %(message)s'))
 
+config = configparser.ConfigParser()
+config.read('./wicm.ini')
+
+if not config.getboolean('default', 'verbose'):
+    logger.setLevel(logging.INFO)
+
+logger.info('Starting..')
+
+mysql_connect = 'mysql+mysqlconnector://{}:{}@{}:{}/{}'.format(
+    config.get('database', 'username'),
+    config.get('database', 'password'),
+    config.get('database', 'host'),
+    config.getint('database', 'port'),
+    config.get('database', 'name')
+)
+
+logger.debug('Database connection string: {}'.format(mysql_connect))
+
+logger.debug('OpenDaylight connection {}:{}@{}:{}'.format(
+    config.get('opendaylight', 'host'),
+    config.getint('opendaylight', 'port'),
+    config.get('opendaylight', 'username'),
+    config.get('opendaylight', 'password')
+))
+
+vtn = VtnWrapper(
+    config.get('opendaylight', 'host'),
+    config.get('opendaylight', 'port'),
+    config.get('opendaylight', 'username'),
+    config.get('opendaylight', 'password')
+)
+
+
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = mysql_connect
-app.config['SQLALCHEMY_POOL_RECYCLE'] = 299
-
+app.config['SQLALCHEMY_POOL_RECYCLE'] = 299  # compatibility with MariaDB
 db.init_app(app)
-
-vtn = VtnWrapper('opendaylight', 8181)
-# vtn = VtnWrapper('biker', 8181)
 
 
 @app.route('/nap', methods=['POST', 'GET', 'DELETE'], strict_slashes=False)
@@ -119,9 +146,10 @@ def service_request_post():
         ns_instance_id = service_request['service']['ns_instance_id']
         client_mkt_id = service_request['service']['client_mkt_id']
         nap_id = service_request['service']['nap_mkt_id']
-        nfvi_id = service_request['service']['nfvi_mkt_id']
+        nfvi_ids = service_request['service']['nfvi_mkt_id']
 
-        result = service.post(client_mkt_id, ns_instance_id, nap_id, [nfvi_id])
+        allocated = service.post(client_mkt_id, ns_instance_id, nap_id,
+                                 nfvi_ids)
     except KeyError as ex:
         logger.error('Request to create service failed: must include {}'
                      .format(str(ex)))
@@ -142,22 +170,30 @@ def service_request_post():
                      'ns_instance_id {} already in use!'.format(ns_instance_id))
         return jsonify({'error': 'ns_instance_id "{}" already in use!'
                         .format(ns_instance_id)}), 400
+    log_string = ''
+    result = {'allocated': {
+        'ns_instance_id': ns_instance_id,
+        'path': []
+    }}
 
-    logger.info('Allocated vlans ce:{} and pe:{} for ns: {}'.format(
-        result[0][0], result[0][1], ns_instance_id))
+    for i in range(0, len(nfvi_ids)):
+        log_string += 'nfvi_id: {} ce: {} pe: {}\n'.format(
+            nfvi_ids[i], allocated[i][0], allocated[i][1])
 
-    return jsonify(
-        {'allocated': {
-            'ns_instance_id': ns_instance_id,
+        result['allocated']['path'].append({
+            'nfvi_id': nfvi_ids[i],
             'ce_transport': {
                 'type': 'vlan',
-                'vlan_id':  result[0][0],
+                'vlan_id':  allocated[i][0],
             },
             'pe_transport': {
                 'type': 'vlan',
-                'vlan_id':  result[0][1],
-            }
-        }}), 201
+                'vlan_id':  allocated[i][1]
+            }})
+
+    logger.info('Allocated vlans\n{}\n'.format(log_string))
+
+    return jsonify(result), 201
 
 
 @app.route('/vnf-connectivity', methods=['GET'], strict_slashes=False)
@@ -191,15 +227,14 @@ def service_request_put(ns_instance_id=None):
         return jsonify({'error': 'Service {} is not in ALLOCATED state!'
                         .format(ns_instance_id)}), 400
     try:
+        interfaces = []
+        for nfvi_path in service_info['path']:
+            nfvi_info = nfvi.get(nfvi_path['nfvi_mkt_id'])[0]
 
-        nfvi_info = nfvi.get(service_info['nfvi_mkt_id'])[0]
-
-        interfaces = [((nfvi_info['switch'],
-                        nfvi_info['ce_port'],
-                        service_info['ce_transport']['vlan_id']),
-                       (nfvi_info['switch'],
-                        nfvi_info['pe_port'],
-                        service_info['pe_transport']['vlan_id']))]
+            interfaces.append(((nfvi_info['switch'], nfvi_info['ce_port'],
+                                nfvi_path['ce_transport']['vlan_id']), (
+                               nfvi_info['switch'], nfvi_info['pe_port'],
+                               nfvi_path['pe_transport']['vlan_id'])))
 
         vtn.chain_create(service_info['client_mkt_id'],
                          service_info['ns_instance_id'],
@@ -261,6 +296,3 @@ def reset_db():
 def hello():
     logger.info('ola!')
     return "WICM!!"
-
-if __name__ == "__main__":
-    app.run(debug=True, host='0.0.0.0')
