@@ -50,8 +50,8 @@ def main(odl_ip='127.0.0.1'):
     "Create custom topo."
     net = Mininet(topo=None, build=False)
 
-    host1 = net.addHost('h1', cls=VLANHost, vlan=300)
-    host2 = net.addHost('h2', cls=VLANHost, vlan=300)
+    host1 = net.addHost('h1', cls=VLANHost, vlan=100)
+    host2 = net.addHost('h2', cls=VLANHost, vlan=100)
 
     s1 = net.addSwitch('s1')
     s2 = net.addSwitch('s2')
