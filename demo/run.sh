@@ -26,14 +26,14 @@ sleep 10s
 
 while [ "$( netstat -anp | grep 6633 -c)"  -lt 6 ]
 do
-    echo "Wainting for ODL to start up!"
+    echo "Waiting for ODL to start up!"
     sleep 10s
 done
 
 
 while [ "$(curl -s -XDELETE localhost:12891/reset_db)"  != "ok" ]
 do
-    echo "Wainting for WICM start up!"
+    echo "Waiting for WICM start up!"
     sleep 10s
 done
 
