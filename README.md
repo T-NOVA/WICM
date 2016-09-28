@@ -253,7 +253,7 @@ The first step of the process:
 <pre>
 curl -X POST localhost:12891/vnf-connectivity \
     -H "Content-type: application/json" \
-    -d'{"service":{"ns_instance_id":"service1","client_mkt_id":"nap1","nap_mkt_id":"nap1","nfvi_mkt_id":["nfvi1"]}}'
+    -d'{"service":{"ns_instance_id":"service1","client_mkt_id":"c1","nap_mkt_id":"c1_nap1","nfvi_mkt_id":["nfvi1"]}}'
 </pre>
 
 The payload in a read friendly format:
