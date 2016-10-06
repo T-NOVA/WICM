@@ -44,7 +44,7 @@ client 1 while nvfi2 if farther away. Which one to use is negotiated by the
 client and the provider, even both can be used. In this example only nfvi2 will
 be used for simplicity sake.
 
-To redirect the traffic from client 1 to the NFVI-PoP will will use a SDN
+To redirect the traffic from client 1 to the NFVI-PoP we will use a SDN
 switch:
 
 ![initial_net_nfvi](doc/images/initial_net_nfvi.png)
