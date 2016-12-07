@@ -116,10 +116,9 @@ def nfvi_request(mkt_id=None):
         logger.info('Request to create NFVI-POP: {}'.format(nfvi_request))
 
         mkt_id = nfvi_request['nfvi']['mkt_id']
-        ce = (nfvi_request['nfvi']['switch'], nfvi_request['nfvi']['ce_port'])
-        pe = (nfvi_request['nfvi']['switch'], nfvi_request['nfvi']['pe_port'])
+        port = (nfvi_request['nfvi']['switch'], nfvi_request['nfvi']['port'])
 
-        result = jsonify({'inserted': nfvi.put(mkt_id, ce, pe)}), 201
+        result = jsonify({'inserted': nfvi.put(mkt_id, port)}), 201
     elif request.method == 'DELETE':
 
         #  TODO: Delete bridge @ ODL!
@@ -146,10 +145,11 @@ def service_request_post():
         ns_instance_id = service_request['service']['ns_instance_id']
         client_mkt_id = service_request['service']['client_mkt_id']
         nap_id = service_request['service']['nap_mkt_id']
-        nfvi_ids = service_request['service']['nfvi_mkt_id']
+        ce_pe_nfvi_ids = service_request['service']['ce_pe']
+        pe_ce_nfvi_ids = service_request['service']['pe_ce']
 
         allocated = service.post(client_mkt_id, ns_instance_id, nap_id,
-                                 nfvi_ids)
+                                 ce_pe_nfvi_ids, pe_ce_nfvi_ids)
     except KeyError as ex:
         logger.error('Request to create service failed: must include {}'
                      .format(str(ex)))
@@ -173,22 +173,33 @@ def service_request_post():
     log_string = ''
     result = {'allocated': {
         'ns_instance_id': ns_instance_id,
-        'path': []
+        'ce_pe': [],
+        'pe_ce': [],
     }}
 
-    for i in range(0, len(nfvi_ids)):
-        log_string += 'nfvi_id: {} ce: {} pe: {}\n'.format(
-            nfvi_ids[i], allocated[i][0], allocated[i][1])
+    log_string += 'ce_pe: '
 
-        result['allocated']['path'].append({
-            'nfvi_id': nfvi_ids[i],
-            'ce_transport': {
+    for hop in allocated['ce_pe']:
+        log_string += 'nfvi_id: "{}" vlan_id: "{}"'.\
+            format(hop['nfvi_mkt_id'], hop['vlan_id'])
+
+        result['allocated']['ce_pe'].append({
+            'nfvi_id': hop['nfvi_mkt_id'],
+            'transport': {
                 'type': 'vlan',
-                'vlan_id':  allocated[i][0],
-            },
-            'pe_transport': {
+                'vlan_id':  hop['vlan_id'],
+            }})
+
+    log_string += 'pe_ce: '
+    for hop in allocated['pe_ce']:
+        log_string += 'nfvi_id: "{}" vlan_id: "{}"'.\
+            format(hop['nfvi_mkt_id'], hop['vlan_id'])
+
+        result['allocated']['pe_ce'].append({
+            'nfvi_id': hop['nfvi_mkt_id'],
+            'transport': {
                 'type': 'vlan',
-                'vlan_id':  allocated[i][1]
+                'vlan_id':  hop['vlan_id'],
             }})
 
     logger.info('Allocated vlans\n{}\n'.format(log_string))
@@ -227,19 +238,25 @@ def service_request_put(ns_instance_id=None):
         return jsonify({'error': 'Service {} is not in ALLOCATED state!'
                         .format(ns_instance_id)}), 400
     try:
-        interfaces = []
-        for nfvi_path in service_info['path']:
-            nfvi_info = nfvi.get(nfvi_path['nfvi_mkt_id'])[0]
+        ce_pe = []
+        for hop in service_info['ce_pe']:
+            nfvi_info = nfvi.get(hop['nfvi_mkt_id'])[0]
 
-            interfaces.append(((nfvi_info['switch'], nfvi_info['ce_port'],
-                                nfvi_path['ce_transport']['vlan_id']), (
-                               nfvi_info['switch'], nfvi_info['pe_port'],
-                               nfvi_path['pe_transport']['vlan_id'])))
+            ce_pe.append(((nfvi_info['switch'], nfvi_info['port'],
+                           hop['transport']['vlan_id'])))
+
+        pe_ce = []
+        for hop in service_info['pe_ce']:
+            nfvi_info = nfvi.get(hop['nfvi_mkt_id'])[0]
+
+            pe_ce.append(((nfvi_info['switch'], nfvi_info['port'],
+                           hop['transport']['vlan_id'])))
+
 
         vtn.chain_create(service_info['client_mkt_id'],
                          service_info['ns_instance_id'],
                          service_info['nap_mkt_id'],
-                         interfaces)
+                         ce_pe, pe_ce)
     except Exception as ex:
         logger.error('Request enable Service {} failed VTN Manager: {}'
                      .format(ns_instance_id, ex))

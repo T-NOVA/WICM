@@ -41,10 +41,11 @@ PE stands for Provider Edge and CE for Client Edge. Client Site 1 has vlan 100 f
 Client 1 would like to use some network virtual functions provided by it's
 network provider, available at the NFVI-PoPs: nfvi1 and nfvi2. nfvi1 is close to
 client 1 while nvfi2 if farther away. Which one to use is negotiated by the
-client and the provider, even both can be used. In this example only nfvi2 will
-be used for simplicity sake.
+client and the provider, even both can be used. In this example traffic from the
+client site 1 to the internet will go first to the nfvi1 while traffic comming in
+from the internet will go  first to the nfvi2 and then nfvi1.
 
-To redirect the traffic from client 1 to the NFVI-PoP will will use a SDN
+To redirect the traffic from client 1 to the NFVI-PoPs will will use a SDN
 switch:
 
 ![initial_net_nfvi](doc/images/initial_net_nfvi.png)
@@ -55,42 +56,29 @@ processed packets to their original destination.
 
 This request is done in a two-step process:
 
-1. Orchestrator requests WICM to reserve vlans for each of the NFVI-PoP(just for
-   nfvi2 in this case) that are going to be used for the client.
+1. Orchestrator requests WICM to reserve vlans for each of the NFVI-PoP(3 vlans in this case) that are going to be used for the client.
    
-2. WICM answers with 2 vlans per nfvi pop requested. These vlans are now reserved for that client.
+2. WICM answers with a vlan per nfvi pop per direction requested. These vlans are now reserved for that client.
 
 3. Orchestrator instantiates the respective services in the correct vlans in
    order to receive the redirected traffic. And then, once the VNFs are ready
    requests WICM to start redirecting traffic.
 
-4. Traffic redirection is enable!
+4. Traffic redirection is enabled!
 
-####For example if WICM reserved vlans 400 and 401 at nfvi2 the traffic would flow like this:
+####For example if WICM reserved vlan 400@nfvi1 for direction ce->pe and vlan 400@nfvi2 for direction pe->ce the traffic would flow like this:
 
-##### From the Client site to the pop:
-![initial_net_nfvi](doc/images/initial_net_nfvi_cs2nfvi2.png)
+##### From the Client site to the Internet:
+![initial_net_nfvi](doc/images/initial_net_nfvi_ce_pe.png)
 
-##### From the pop back to sw 1 to be sent to its original destination:
-![initial_net_nfvi](doc/images/initial_net_nfvi_nfvi22cs.png)
-
-Redirection ends at sw 1 and from there on the processed packets will go on
-normally. Redirection on the other direction (internet to the  client site) is
-similar.
+##### From the Internet to the Client site:
+![initial_net_nfvi](doc/images/initial_net_nfvi_pe_ce.png)
 
 The whole process is transparent to both the PE and CE routers involved, with
 them only seeing vlan 100. Ensuring compatibility with legacy networks with
 minimum cost.
 
-SDN switch 2 modifies the vlans assuring that packets coming from the client site enter the pop with vlan 400
-and packets coming from the 'internet' enter the pop with vlan 401. 
-This allow
-the pop to know the traffic direction (as both directions are redirected) to to
-act properly. The switch also the vlan back to 100, so the
-
-Finally, packet leave the pop with the other vlan that they
-entered in order to allow the SDN to tell the traffic direction and do the
-proper forwarding.
+SDN switches modify the vlans assuring that packets enter both the routers and the nfvi-pops with correct vlans.
 
 One nfvi-pop can be shared by several clients, just as long as vlans are
 available.
@@ -198,7 +186,7 @@ The payload in a read friendly format:
 
 Meaning that client c1 has a NAP identified by c1_nap1 on SDN switch openflow:1.
 In the switch's port 1 with vlan 100 is connected the CE and on port 2 is
-connected the PE also with vlan 300. Only vlans are supported at the moment. The
+connected the PE also with vlan 100. Only vlans are supported at the moment. The
 ids fields are assign/used by orchestrator (TeNOR).
 
 This allows WICM to configure the SDN switch to allow the client site to access
@@ -221,12 +209,12 @@ register the NFVI-PoPs, in this case switches s3 and s4 that will circulate the 
 <pre>
 curl -X POST localhost:12891/nfvi \
     -H "Content-type: application/json"  \
-    -d '{"nfvi":{"mkt_id":"nfvi1","switch":"openflow:1","ce_port":3,"pe_port":3}}'
+    -d '{"nfvi":{"mkt_id":"nfvi1","switch":"openflow:1","port":3}}'
 
 
 curl -X POST localhost:12891/nfvi \
     -H "Content-type: application/json"  \
-    -d '{"nfvi":{"mkt_id":"nfvi2","switch":"openflow:2","ce_port":1,"pe_port":1}}'
+    -d '{"nfvi":{"mkt_id":"nfvi2","switch":"openflow:2","port":1}}'
 </pre>
 
 The payload in a read friendly format:
@@ -235,14 +223,13 @@ The payload in a read friendly format:
     "nfvi":{
         "mkt_id":"nfvi1",
         "switch":"openflow:1",
-        "ce_port":3,
-        "pe_port":3
+        "ce_port":1,
     }
 }
 </pre>
 
-Meaning that NFVI-PoP nfvi1 is available in SDN switch openflow:1, in port 3 for
-both CE and PE links. The NFVI-PoP has no client associated because it belongs
+Meaning that NFVI-PoP nfvi1 is available in SDN switch openflow:1, in port 3. 
+The NFVI-PoP has no client associated because it belongs
 to the service provider and may hold VNFs for several clients. Payload for the
 second request is similar.
 
@@ -253,7 +240,9 @@ The first step of the process:
 <pre>
 curl -X POST localhost:12891/vnf-connectivity \
     -H "Content-type: application/json" \
-    -d'{"service":{"ns_instance_id":"service1","client_mkt_id":"c1","nap_mkt_id":"c1_nap1","nfvi_mkt_id":["nfvi1"]}}'
+    -d'{"service":{"ns_instance_id":"service1","client_mkt_id":"c1","nap_mkt_id":"c1_nap1","ce_pe":["nfvi1","nfvi2"],"pe_ce":["nfvi1"]}}'
+
+    
 </pre>
 
 The payload in a read friendly format:
@@ -264,42 +253,54 @@ The payload in a read friendly format:
         "ns_instance_id":"service1",
         "client_mkt_id":"c1",
         "nap_mkt_id":"c1_nap1",
-        "nfvi_mkt_id":[
-            "nfvi1"
-        ]
+        "ce_pe":["nfvi1","nfvi2"],
+        "pe_ce":["nfvi1"]
     }
 }
 </pre>
 
-Requesting a redirection from c1_nap1 to nfvi1. You may have noticed that the nfvi_mkt_id is an array, that is because multi nfvi pop is supported. 
-More on this latter.
+Requesting a redirection from c1->nfvi1->nfvi2->Internt and from the Internet->nfvi1->c1.
 
 Once we make this request to WICM it returns:
 
 <pre>
+
 {
   "allocated": {
-    "ns_instance_id": "service1", 
-    "path": [
+    "pe_ce": [
       {
-        "ce_transport": {
+        "nfvi_id": "nfvi2", 
+        "transport": {
           "type": "vlan", 
           "vlan_id": 400
-        }, 
+        }
+      }, 
+      {
         "nfvi_id": "nfvi1", 
-        "pe_transport": {
+        "transport": {
           "type": "vlan", 
           "vlan_id": 401
         }
-      } 
+      }
+    ], 
+    "ns_instance_id": "service1", 
+    "ce_pe": [
+      {
+        "nfvi_id": "nfvi1", 
+        "transport": {
+          "type": "vlan", 
+          "vlan_id": 400
+        }
+      }
     ]
   }
 }
+
 </pre>
 
-Meaning vlans 400 and 401 are reserved for the request service1, keep in mind
+Meaning vlans 400@nfvi1 for direction ce->pe and vlans 400@nfvi2 and 401@nfvi1 for direction pe->ce are reserved for the request service1, keep in mind
 that at this time no redirection is occurring. The vlans are reserved so 
-TeNOR may instantiate the VNFs at nfvi1 correctly to receive the traffic on the
+TeNOR may instantiate the VNFs at nfvi1/nfvi2 correctly to receive the traffic on the
 assign vlans.
 
 Once the VNFs are ready, TeNOR request WICM to start the traffic redirection.
@@ -316,15 +317,6 @@ watch sudo ovs-ofctl -Oopenflow13 dump-flows s3
 </pre>
 
 Notice that the n_packets will increase when the redirection is up.
-
-<pre>
-Every 2.0s: sudo ovs-ofctl -Oopenflow13 dump-flows s3                                                                                        Thu Sep 22 16:37:52 2016
-OFPST_FLOW reply (OF1.3) (xid=0x2):
- cookie=0x0, duration=182430.484s, table=0, n_packets=15, n_bytes=1530, dl_vlan=400 actions=set_field:4497->vlan_vid,IN_PORT
- cookie=0x0, duration=182430.407s, table=0, n_packets=15, n_bytes=1530, dl_vlan=401 actions=set_field:4496->vlan_vid,IN_PORT
- cookie=0x0, duration=182430.177s, table=0, n_packets=0, n_bytes=0, dl_vlan=402 actions=set_field:4499->vlan_vid,IN_PORT
- cookie=0x0, duration=182430.099s, table=0, n_packets=0, n_bytes=0, dl_vlan=403 actions=set_field:4498->vlan_vid,IN_PORT
-</pre>
 
 Finally to stop the redirection use:
 <pre>

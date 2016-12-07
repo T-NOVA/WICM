@@ -22,10 +22,8 @@ class NFVI(db.Model):
     id = db.Column(db.Integer, primary_key=True, nullable=False)
     mkt_id = db.Column(db.String(50), unique=True, nullable=False)
 
-    ce_port_refid = db.Column(db.Integer, db.ForeignKey('port.id'),
-                              nullable=False)
-    pe_port_refid = db.Column(db.Integer, db.ForeignKey('port.id'),
-                              nullable=False)
+    port_refid = db.Column(db.Integer, db.ForeignKey('port.id'),
+                           nullable=False)
 
     updated = db.Column(db.TIMESTAMP,
                         server_default=db.text(
@@ -33,27 +31,20 @@ class NFVI(db.Model):
 
     created = db.Column(db.TIMESTAMP, default=db.func.now())
 
-    def __init__(self, mkt_id, ce_port_refid, pe_port_refid):
+    def __init__(self, mkt_id, port_refid):
         self.mkt_id = mkt_id
-        self.ce_port_refid = ce_port_refid
-        self.pe_port_refid = pe_port_refid
+        self.port_refid = port_refid
 
 
-def put(mkt_id, ce, pe):
+def put(mkt_id, nfvi_port):
 
-    ce_port = Port.query.filter_by(switch=ce[0], port=ce[1]).first()
-    if not ce_port:
-        ce_port = Port(ce[0], ce[1])
-        db.session.add(ce_port)
+    port = Port.query.filter_by(switch=nfvi_port[0], port=nfvi_port[1]).first()
+    if not port:
+        port = Port(nfvi_port[0], nfvi_port[1])
+        db.session.add(port)
         db.session.flush()
 
-    pe_port = Port.query.filter_by(switch=pe[0], port=pe[1]).first()
-    if not pe_port:
-        pe_port = Port(pe[0], pe[1])
-        db.session.add(pe_port)
-        db.session.flush()
-
-    nfvi = NFVI(mkt_id, ce_port.id, pe_port.id)
+    nfvi = NFVI(mkt_id, port.id)
     db.session.add(nfvi)
     db.session.commit()
 
@@ -69,14 +60,12 @@ def get(mkt_id=None):
 
     for nfvi in query:
 
-        ce_port = Port.query.filter_by(id=nfvi.ce_port_refid).first()
-        pe_port = Port.query.filter_by(id=nfvi.pe_port_refid).first()
+        port = Port.query.filter_by(id=nfvi.port_refid).first()
 
         nfvis.append({
             'mkt_id': nfvi.mkt_id,
-            'switch': ce_port.switch,
-            'ce_port': ce_port.port,
-            'pe_port': pe_port.port,
+            'switch': port.switch,
+            'port': port.port,
         })
 
     return nfvis
@@ -89,22 +78,14 @@ def delete(mkt_id=None):
         query = NFVI.query.all()
     for nfvi in query:
 
-        ce_port = Port.query.filter_by(id=nfvi.ce_port_refid).first()
-        pe_port = Port.query.filter_by(id=nfvi.pe_port_refid).first()
+        port = Port.query.filter_by(id=nfvi.port_refid).first()
 
         db.session.delete(nfvi)
         db.session.flush()
 
         try:
             with db.session.begin_nested():
-                db.session.delete(ce_port)
-                db.session.flush()
-        except IntegrityError:
-            pass
-
-        try:
-            with db.session.begin_nested():
-                db.session.delete(pe_port)
+                db.session.delete(port)
                 db.session.flush()
         except IntegrityError:
             pass

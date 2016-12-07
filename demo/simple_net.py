@@ -53,16 +53,28 @@ def main(odl_ip='127.0.0.1'):
     host1 = net.addHost('h1', cls=VLANHost, vlan=100)
     host2 = net.addHost('h2', cls=VLANHost, vlan=100)
 
+    host3 = net.addHost('h3', cls=VLANHost, vlan=200)
+    host4 = net.addHost('h4', cls=VLANHost, vlan=200)
+
     s1 = net.addSwitch('s1')
     s2 = net.addSwitch('s2')
-    s3 = net.addSwitch('s3')
-    s4 = net.addSwitch('s4')
+
+    p1 = net.addSwitch('p1')
+    p2 = net.addSwitch('p2')
+    p3 = net.addSwitch('p3')
+    p4 = net.addSwitch('p4')
 
     net.addLink(s1, host1)
     net.addLink(s1, host2)
-    net.addLink(s1, s3)
+    net.addLink(s2, host3)
+    net.addLink(s2, host4)
+
     net.addLink(s1, s2)
-    net.addLink(s2, s4)
+
+    net.addLink(s1, p1)
+    net.addLink(s1, p2)
+    net.addLink(s2, p3)
+    net.addLink(s2, p4)
 
     odl_ctrl = net.addController('c0', controller=RemoteController,
                                  ip=odl_ip, port=6633)
@@ -71,13 +83,17 @@ def main(odl_ip='127.0.0.1'):
 
     s1.start([odl_ctrl])
     s2.start([odl_ctrl])
-    s3.start([])
-    s4.start([])
+    p1.start([])
+    p2.start([])
+    p3.start([])
+    p4.start([])
 
     # Preconfig the switches
-    for i in range(400, 411):
-        vlan_loop(s3, i, i)
-        vlan_loop(s4, i, i)
+    for i in range(400, 406):
+        vlan_loop(p1, i, i)
+        vlan_loop(p2, i, i)
+        vlan_loop(p3, i, i)
+        vlan_loop(p4, i, i)
 
     CLI(net)
     net.stop()

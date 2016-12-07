@@ -32,23 +32,23 @@ class ServiceInterface(db.Model):
 
     nfvi_refid = db.Column(db.Integer, db.ForeignKey('NFVI.id'), nullable=False)
 
-    ce_interface_refid = db.Column(db.Integer, db.ForeignKey('interface.id'),
-                                   nullable=False)
-    pe_interface_refid = db.Column(db.Integer, db.ForeignKey('interface.id'),
-                                   nullable=False)
+    interface_refid = db.Column(db.Integer, db.ForeignKey('interface.id'),
+                                nullable=False)
+
+    ce_pe = db.Column(db.Boolean, nullable=False)
 
     __table_args__ = (
-        db.UniqueConstraint('service_refid', 'index',
-                            name='_ns_instance_refid_index_uc'),
+        db.UniqueConstraint('service_refid', 'index', 'ce_pe',
+                            name='_ns_instance_index_uc'),
     )
 
-    def __init__(self, service_refid, index, nfvi_refid, ce_interface_refid,
-                 pe_interface_refid):
+    def __init__(self, service_refid, index, nfvi_refid, interface_refid,
+                 ce_pe):
         self.service_refid = service_refid
         self.index = index
         self.nfvi_refid = nfvi_refid
-        self.ce_interface_refid = ce_interface_refid
-        self.pe_interface_refid = pe_interface_refid
+        self.interface_refid = interface_refid
+        self.ce_pe = ce_pe
 
 
 class Service(db.Model):
@@ -77,47 +77,53 @@ class Service(db.Model):
         self.nap_refid = nap_refid
 
 
-def post(client_mkt_id, ns_instance_id, nap_mkt_id, nfvi_mkt_ids):
+def post(client_mkt_id, ns_instance_id, nap_mkt_id, ce_pe_nfvi_mkt_ids,
+         pe_ce_nfvi_mkt_ids):
     nap_id = NAP.query.filter_by(mkt_id=nap_mkt_id).first().id
     service = Service(client_mkt_id, ns_instance_id, 'ALLOCATED', nap_id)
     db.session.add(service)
     db.session.flush()
 
-    vlans_allocated = []
-    for i in range(0, len(nfvi_mkt_ids)):
-        nfvi_mkt_id = nfvi_mkt_ids[i]
+    def add_service_interface(service_id, nfvi_mkt_id, index, ce_pe):
+
         nfvi = NFVI.query.filter_by(mkt_id=nfvi_mkt_id).first()
 
-        ce_used_interfaces = Interface.query.\
-            filter_by(port_refid=nfvi.ce_port_refid).all()
-        ce_used_vlans = set([interface.
-                             vlan for interface in ce_used_interfaces])
-        ce_vlan = list(available_vlans - ce_used_vlans)[0]
+        used_interfaces = Interface.query.\
+            filter_by(port_refid=nfvi.port_refid).all()
+        used_vlans = set([interface.vlan for interface in used_interfaces])
+        vlan = list(available_vlans - used_vlans)[0]
 
-        ce_interface = Interface(nfvi.ce_port_refid, ce_vlan)
-        db.session.add(ce_interface)
+        interface = Interface(nfvi.port_refid, vlan)
+        db.session.add(interface)
         db.session.flush()
 
-        pe_used_interfaces = Interface.query.\
-            filter_by(port_refid=nfvi.pe_port_refid).all()
-        pe_used_vlans = set([interface.
-                             vlan for interface in pe_used_interfaces])
-        pe_vlan = list(available_vlans - pe_used_vlans)[0]
+        service_interface = ServiceInterface(service_id, index, nfvi.id,
+                                             interface.id, ce_pe)
 
-        pe_interface = Interface(nfvi.pe_port_refid, pe_vlan)
-        db.session.add(pe_interface)
-        db.session.flush()
-
-        service_interface = ServiceInterface(service.id, i, nfvi.id,
-                                             ce_interface.id, pe_interface.id)
         db.session.add(service_interface)
         db.session.flush()
 
-        vlans_allocated.append((ce_vlan, pe_vlan))
+        return vlan
+
+    ce_pe = []
+    for i in range(0, len(ce_pe_nfvi_mkt_ids)):
+        vlan = add_service_interface(service.id, ce_pe_nfvi_mkt_ids[i], i, True)
+        ce_pe.append({
+            'nfvi_mkt_id': ce_pe_nfvi_mkt_ids[i],
+            'vlan_id': vlan
+        })
+
+    pe_ce = []
+    for i in range(0, len(pe_ce_nfvi_mkt_ids)):
+        vlan = add_service_interface(service.id, pe_ce_nfvi_mkt_ids[i], i, False)
+        pe_ce.append({
+            'nfvi_mkt_id': pe_ce_nfvi_mkt_ids[i],
+            'vlan_id': vlan
+        })
 
     db.session.commit()
 
-    return vlans_allocated
+    return {'ce_pe': ce_pe, 'pe_ce': pe_ce}
 
 
 def get(ns_instance_id):
@@ -136,26 +142,26 @@ def get(ns_instance_id):
         service_interfaces = ServiceInterface.query.filter_by(
             service_refid=service.id).order_by(ServiceInterface.index)
 
-        path = []
+        ce_pe = []
+        pe_ce = []
         for service_interface in service_interfaces:
 
-            ce_interface = Interface.query.filter_by(
-                id=service_interface.ce_interface_refid).first()
-            pe_interface = Interface.query.filter_by(
-                id=service_interface.pe_interface_refid).first()
+            interface = Interface.query.filter_by(
+                id=service_interface.interface_refid).first()
             nfvi_mkt_id = NFVI.query.filter_by(
                 id=service_interface.nfvi_refid).first().mkt_id
 
-            path.append({
+            hop = {
                 'nfvi_mkt_id': nfvi_mkt_id,
-                'ce_transport': {
+                'transport': {
                     'type': 'vlan',
-                    'vlan_id':  ce_interface.vlan,
-                },
-                'pe_transport': {
-                    'type': 'vlan',
-                    'vlan_id':  pe_interface.vlan,
-                }})
+                    'vlan_id':  interface.vlan,
+                }}
+
+            if service_interface.ce_pe:
+                ce_pe.append(hop)
+            else:
+                pe_ce.append(hop)
 
         created = service.created
         updated = service.updated
@@ -164,7 +170,8 @@ def get(ns_instance_id):
             'client_mkt_id': client_mkt_id,
             'status': status,
             'nap_mkt_id': nap_mkt_id,
-            'path': path,
+            'ce_pe': ce_pe,
+            'pe_ce': pe_ce,
             'created': created,
             'updated': updated
             })
@@ -186,30 +193,19 @@ def delete_service(ns_instance_id):
             service_refid=service.id).all()
         for service_interface in service_interfaces:
 
-            ce_interface = Interface.query.filter_by(
-                id=service_interface.ce_interface_refid).first()
-            pe_interface = Interface.query.filter_by(
-                id=service_interface.pe_interface_refid).first()
+            interface = Interface.query.filter_by(
+                id=service_interface.interface_refid).first()
 
-            ce_port = Port.query.filter_by(id=ce_interface.port_refid).first()
-            pe_port = Port.query.filter_by(id=pe_interface.port_refid).first()
+            port = Port.query.filter_by(id=interface.port_refid).first()
 
             db.session.delete(service_interface)
             db.session.flush()
-            db.session.delete(ce_interface)
-            db.session.delete(pe_interface)
+            db.session.delete(interface)
             db.session.flush()
 
             try:
                 with db.session.begin_nested():
-                    db.session.delete(ce_port)
-                    db.session.flush()
-            except IntegrityError:
-                pass
-
-            try:
-                with db.session.begin_nested():
-                    db.session.delete(pe_port)
+                    db.session.delete(port)
                     db.session.flush()
             except IntegrityError:
                 pass

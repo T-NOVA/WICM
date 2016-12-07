@@ -400,38 +400,45 @@ class VtnWrapper:
     def nap_delete(self, client_id, mkt_id):
         self._vbrige_delete(client_id, mkt_id + '_NAP')
 
-    def chain_create(self, client_id, ns_instance_id, nap_mkt_id, interfaces):
+    def chain_create(self, client_id, ns_instance_id, nap_mkt_id, ce_pe, pe_ce):
         self._vbridge_create(client_id, ns_instance_id + '_NS')
+        ce_pe_path = [(nap_mkt_id + '_NAP', 'ce')]
+        pe_ce_path = [(nap_mkt_id + '_NAP', 'pe')]
+
         try:
-
-            path = []
-            for i in range(0, len(interfaces)):
-                ce_interface = interfaces[i][0]
-                pe_interface = interfaces[i][1]
-
+            for i in range(0, len(ce_pe)):
                 self._vinterface_create(client_id, ns_instance_id + '_NS',
-                                        'ce' + str(i))
-                self._vinterface_create(client_id, ns_instance_id + '_NS',
-                                        'pe' + str(i))
+                                        'ce_pe' + str(i))
 
                 self._vinterface_map(client_id, ns_instance_id + '_NS',
-                                     'ce' + str(i), ce_interface)
+                                     'ce_pe' + str(i), ce_pe[i])
+
+                ce_pe_path.append((ns_instance_id + '_NS', 'ce_pe' + str(i)))
+
+            for i in range(0, len(pe_ce)):
+                self._vinterface_create(client_id, ns_instance_id + '_NS',
+                                        'pe_ce' + str(i))
+
                 self._vinterface_map(client_id, ns_instance_id + '_NS',
-                                     'pe' + str(i), pe_interface)
+                                     'pe_ce' + str(i), pe_ce[i])
 
-                path.append((ns_instance_id + '_NS', 'ce' + str(i)))
-                path.append((ns_instance_id + '_NS', 'pe' + str(i)))
+                pe_ce_path.append((ns_instance_id + '_NS', 'pe_ce' + str(i)))
 
-            path = [(nap_mkt_id + '_NAP', 'ce')] + path \
-                + [(nap_mkt_id + '_NAP', 'pe')]
-            redirections = zip(path[::2], path[1::2])
+            ce_pe_path.append((nap_mkt_id + '_NAP', 'pe'))
+            pe_ce_path.append((nap_mkt_id + '_NAP', 'ce'))
 
+            redirections = zip(ce_pe_path, ce_pe_path[1:])
             for if0, if1 in redirections:
                 self._redirect_create(client_id, if0[0], if0[1], if1[0], if1[1])
-                self._redirect_create(client_id, if1[0], if1[1], if0[0], if0[1])
+
+            redirections = zip(pe_ce_path, pe_ce_path[1:])
+            for if0, if1 in redirections:
+                self._redirect_create(client_id, if0[0], if0[1], if1[0], if1[1])
 
         except Exception as ex:
             self._vbrige_delete(client_id, ns_instance_id + '_NS')
+            self._redirect_delete(client_id, nap_mkt_id + '_NAP', 'ce')
+            self._redirect_delete(client_id, nap_mkt_id + '_NAP', 'pe')
             raise ex
 
     def _redirect_delete(self, tenant, vbridge, vinterface):
