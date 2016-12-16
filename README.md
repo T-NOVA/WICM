@@ -45,7 +45,7 @@ client and the provider, even both can be used. In this example traffic from the
 client site 1 to the internet will go first to the nfvi1 while traffic comming in
 from the internet will go  first to the nfvi2 and then nfvi1.
 
-To redirect the traffic from client 1 to the NFVI-PoPs will will use a SDN
+To redirect the traffic from client 1 to the NFVI-PoPs we will use a SDN
 switch:
 
 ![initial_net_nfvi](doc/images/initial_net_nfvi.png)
@@ -269,17 +269,17 @@ Once we make this request to WICM it returns:
   "allocated": {
     "pe_ce": [
       {
-        "nfvi_id": "nfvi2", 
+        "nfvi_id": "nfvi1", 
         "transport": {
           "type": "vlan", 
           "vlan_id": 400
         }
       }, 
       {
-        "nfvi_id": "nfvi1", 
+        "nfvi_id": "nfvi2", 
         "transport": {
           "type": "vlan", 
-          "vlan_id": 401
+          "vlan_id": 400
         }
       }
     ], 
@@ -289,7 +289,7 @@ Once we make this request to WICM it returns:
         "nfvi_id": "nfvi1", 
         "transport": {
           "type": "vlan", 
-          "vlan_id": 400
+          "vlan_id": 401
         }
       }
     ]
