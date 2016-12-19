@@ -13,4 +13,4 @@
 #    limitations under the License.
 
 FROM opendaylight/odl:4.1.0
-RUN sed -ie "s/featuresBoot=.*/featuresBoot=config,standard,region,package,kar,ssh,management,odl-vtn-manager,odl-vtn-manager-rest,odl-mdsal-apidocs,odl-dlux-all/g" /opt/opendaylight/etc/org.apache.karaf.features.cfg
+RUN sed -ie "s/featuresBoot=.*/featuresBoot=config,standard,region,package,kar,ssh,management,odl-vtn-manager,odl-vtn-manager-rest,odl-mdsal-apidocs,odl-dlux-all,odl-openflowplugin-nxm-extensions/g" /opt/opendaylight/etc/org.apache.karaf.features.cfg
